@@ -8,6 +8,7 @@ import argparse
 import sys
 import os
 import json
+from datetime import datetime
 from groq import Groq
 from generator import generate_jmx
 from validator import validate_jmx
@@ -21,8 +22,11 @@ from notifier import (
     notify_passed,
     notify_failure_detected,
     notify_fixed,
-    notify_unfixable
+    notify_unfixable,
+    notify_preflight_failed
 )
+from preflight import check_endpoint
+from github_sync import push_run_to_github
 from config import TESTS_DIR, MAX_VALIDATION_RETRIES, GROQ_API_KEY, MODEL
 
 
@@ -91,8 +95,12 @@ def main():
     parser.add_argument("--output-dir", default=TESTS_DIR, help="Output directory for test files")
     args = parser.parse_args()
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    args.output_dir = os.path.join(args.output_dir, timestamp)
+
     print("\n🤖  JMeter AI Agent Starting...")
-    print(f"📝  Prompt: {args.prompt}\n")
+    print(f"📝  Prompt: {args.prompt}")
+    print(f"📁  Run folder: {args.output_dir}\n")
 
     # Setup paths
     os.makedirs(args.output_dir, exist_ok=True)
@@ -103,10 +111,25 @@ def main():
     # ── Step 1: Parse requirements ──────────────────────────────────────────
     print("📋  Parsing requirements from prompt...")
     requirements = parse_requirements(args.prompt)
+    requirements["test_id"] = timestamp
     print(f"    Test Type : {requirements.get('test_type', '').upper()}")
     print(f"    Endpoint  : {requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}")
     print(f"    Users     : {requirements.get('users')}")
     print(f"    Duration  : {requirements.get('duration')}s\n")
+
+    # ── Step 1b: Pre-flight check ────────────────────────────────────────────
+    print("🔍  Running pre-flight check...")
+    reachable, result = check_endpoint(
+        requirements.get("protocol"),
+        requirements.get("domain"),
+        requirements.get("port", 443),
+        requirements.get("path", "/"),
+    )
+    if not reachable:
+        print(f"❌  Pre-flight failed: {result}")
+        notify_preflight_failed(requirements, result)
+        sys.exit(1)
+    print(f"    Endpoint reachable (HTTP {result})\n")
 
     # ── Step 2: Generate + Validate JMX (loop until valid) ──────────────────
     feedback = None
@@ -153,12 +176,18 @@ def main():
 
     if passed:
         print("✅  Test PASSED!")
-        notify_passed(requirements, metrics)
+        github_url = push_run_to_github(timestamp, jmx_path, results_path, log_path)
+        if github_url:
+            print(f"📦  Run artifacts: {github_url}")
+        notify_passed(requirements, metrics, github_url=github_url)
         sys.exit(0)
 
     # ── Step 6: Auto-fix and one retry ────────────────────────────────────────
     print("\n🔍  Test FAILED. Diagnosing and applying auto-fix...")
-    notify_failure_detected(requirements, metrics, summary)
+    github_url = push_run_to_github(timestamp, jmx_path, results_path, log_path)
+    if github_url:
+        print(f"📦  Run artifacts: {github_url}")
+    notify_failure_detected(requirements, metrics, summary, github_url=github_url)
 
     with open(jmx_path, "r") as f:
         jmx_content = f.read()
@@ -167,7 +196,7 @@ def main():
 
     if not fixed_jmx:
         print("❌  Agent could not determine a fix. Sending diagnosis to Slack.")
-        notify_unfixable(requirements, metrics, summary)
+        notify_unfixable(requirements, metrics, summary, github_url=github_url)
         sys.exit(1)
 
     print("🔧  Fix applied. Re-running test...")
@@ -181,13 +210,16 @@ def main():
         sys.exit(1)
 
     passed, metrics, summary = analyze_results(results_path, log_path)
+    github_url = push_run_to_github(timestamp, jmx_path, results_path, log_path)
+    if github_url:
+        print(f"📦  Run artifacts: {github_url}")
 
     if passed:
         print("✅  Auto-fix succeeded! Test PASSED.")
-        notify_fixed(requirements, metrics)
+        notify_fixed(requirements, metrics, github_url=github_url)
     else:
         print("❌  Auto-fix failed. Sending full diagnosis to Slack.")
-        notify_unfixable(requirements, metrics, summary)
+        notify_unfixable(requirements, metrics, summary, github_url=github_url)
 
 
 if __name__ == "__main__":

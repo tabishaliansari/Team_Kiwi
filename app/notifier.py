@@ -32,9 +32,22 @@ def _send(message: str, emoji: str = "🥝"):
 
 # ── Individual notification functions ──────────────────────────────────────────
 
+def notify_preflight_failed(requirements: dict, error: str):
+    msg = (
+        f"*Pre-flight Check Failed* 🚫\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
+        f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
+        f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n\n"
+        f"*Error:* {error}\n\n"
+        f"_Target is unreachable. Test aborted._"
+    )
+    _send(msg, "🚫")
+
+
 def notify_validation_failed(requirements: dict, issues: list, attempt: int):
     msg = (
         f"*Test Validation Failed* (Attempt {attempt})\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n"
         f"*Issues Found:*\n" +
@@ -47,6 +60,7 @@ def notify_validation_failed(requirements: dict, issues: list, attempt: int):
 def notify_generated(requirements: dict):
     msg = (
         f"*Test Generated and Validated* ✅\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n"
         f"*Virtual Users:* {requirements.get('users')}\n"
@@ -61,6 +75,7 @@ def notify_initiated(requirements: dict, is_retry: bool = False):
     label = "Re-running After Auto-fix" if is_retry else "Test Run Initiated"
     msg = (
         f"*{label}* 🏳️\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n"
         f"*Virtual Users:* {requirements.get('users')}\n"
@@ -70,24 +85,27 @@ def notify_initiated(requirements: dict, is_retry: bool = False):
     _send(msg, "🏁")
 
 
-def notify_passed(requirements: dict, metrics: dict):
+def notify_passed(requirements: dict, metrics: dict, github_url: str | None = None):
     msg = (
         f"*Test PASSED* 🎉\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n\n"
         f"*Results:*\n"
         f"  • Total Requests   : {metrics.get('total_requests', 0)}\n"
         f"  • Error Rate       : {metrics.get('error_rate', 0)}%\n"
         f"  • Avg Response Time: {metrics.get('avg_response_ms', 0)}ms\n"
-        f"  • Min / Max        : {metrics.get('min_response_ms', 0)}ms / {metrics.get('max_response_ms', 0)}ms"
+        f"  • Min / Max        : {metrics.get('min_response_ms', 0)}ms / {metrics.get('max_response_ms', 0)}ms" +
+        (f"\n*Run on GitHub:* {github_url}" if github_url else "")
     )
     _send(msg, "🎉")
 
 
-def notify_failure_detected(requirements: dict, metrics: dict, diagnosis: str):
+def notify_failure_detected(requirements: dict, metrics: dict, diagnosis: str, github_url: str | None = None):
     errors = metrics.get("error_messages", [])
     msg = (
         f"*Test FAILED* ❌\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n\n"
         f"*Failure Stats:*\n"
@@ -96,34 +114,39 @@ def notify_failure_detected(requirements: dict, metrics: dict, diagnosis: str):
         f"  • Error Rate      : {metrics.get('error_rate', 0)}%\n"
         f"  • Avg Response    : {metrics.get('avg_response_ms', 0)}ms\n" +
         (f"  • Errors          : {', '.join(errors)}\n" if errors else "") +
+        (f"*Run on GitHub:* {github_url}\n" if github_url else "") +
         f"\n_Applying auto-fix and re-running..._"
     )
     _send(msg, "❌")
 
 
-def notify_fixed(requirements: dict, metrics: dict):
+def notify_fixed(requirements: dict, metrics: dict, github_url: str | None = None):
     msg = (
         f"*Auto-fix Succeeded* 🔧\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n\n"
         f"*Results After Fix:*\n"
         f"  • Total Requests   : {metrics.get('total_requests', 0)}\n"
         f"  • Error Rate       : {metrics.get('error_rate', 0)}%\n"
-        f"  • Avg Response Time: {metrics.get('avg_response_ms', 0)}ms"
+        f"  • Avg Response Time: {metrics.get('avg_response_ms', 0)}ms" +
+        (f"\n*Run on GitHub:* {github_url}" if github_url else "")
     )
     _send(msg, "🔧")
 
 
-def notify_unfixable(requirements: dict, metrics: dict, diagnosis: str):
+def notify_unfixable(requirements: dict, metrics: dict, diagnosis: str, github_url: str | None = None):
     errors = metrics.get("error_messages", [])
     msg = (
         f"*Could Not Auto-Fix Test* ⛔\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n\n"
         f"*Final Stats:*\n"
         f"  • Error Rate      : {metrics.get('error_rate', 0)}%\n"
         f"  • Failed Requests : {metrics.get('failed_requests', 0)}\n" +
         (f"  • Errors          : {', '.join(errors)}\n" if errors else "") +
+        (f"*Run on GitHub:* {github_url}\n" if github_url else "") +
         f"\n*Diagnosis:*\n{diagnosis[:600]}\n\n"
         f"_Manual investigation required._"
     )
