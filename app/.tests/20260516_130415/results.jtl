@@ -1,0 +1,11 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1778916863891,1331,HTTP Request,200,OK,Users 1-2,text,true,,492,117,4,4,https://httpbin.org/get,1327,0,1021
+1778916863474,1917,HTTP Request,200,OK,Users 1-1,text,true,,492,117,4,4,https://httpbin.org/get,1917,0,1304
+1778916864389,1513,HTTP Request,200,OK,Users 1-3,text,true,,492,117,4,4,https://httpbin.org/get,1512,0,1001
+1778916865389,1337,HTTP Request,200,OK,Users 1-5,text,true,,492,117,4,4,https://httpbin.org/get,1337,0,922
+1778916864891,2137,HTTP Request,200,OK,Users 1-4,text,true,,492,117,4,4,https://httpbin.org/get,2137,0,1828
+1778916865891,1310,HTTP Request,200,OK,Users 1-6,text,true,,492,117,3,3,https://httpbin.org/get,1310,0,1030
+1778916866389,1398,HTTP Request,200,OK,Users 1-7,text,true,,492,117,3,3,https://httpbin.org/get,1397,0,888
+1778916866889,1203,HTTP Request,200,OK,Users 1-8,text,true,,492,117,3,3,https://httpbin.org/get,1203,0,897
+1778916867390,2405,HTTP Request,200,OK,Users 1-9,text,true,,492,117,2,2,https://httpbin.org/get,2405,0,914
+1778916867891,1905,HTTP Request,200,OK,Users 1-10,text,true,,492,117,2,2,https://httpbin.org/get,1905,0,897

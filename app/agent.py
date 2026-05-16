@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-JMeter AI Agent - CLI-based performance test automation
-Usage: python agent.py "Run a spike test on https://httpbin.org/get with 50 users for 30 seconds"
-"""
 
 import argparse
 import sys
@@ -26,7 +22,8 @@ from notifier import (
     notify_preflight_failed
 )
 from preflight import check_endpoint
-from github_sync import push_run_to_github, create_github_issue
+from github_sync import push_run_to_github, push_folder_to_github, create_github_issue
+from reporter import generate_html_report
 from config import TESTS_DIR, MAX_VALIDATION_RETRIES, GROQ_API_KEY, MODEL
 
 
@@ -107,6 +104,7 @@ def main():
     jmx_path     = os.path.join(args.output_dir, "test.jmx")
     results_path = os.path.join(args.output_dir, "results.jtl")
     log_path     = os.path.join(args.output_dir, "jmeter.log")
+    report_dir   = os.path.join(args.output_dir, "report")
 
     # ── Step 1: Parse requirements ──────────────────────────────────────────
     print("📋  Parsing requirements from prompt...")
@@ -193,7 +191,16 @@ def main():
         github_url = push_run_to_github(timestamp, jmx_path, results_path, log_path)
         if github_url:
             print(f"📦  Run artifacts: {github_url}")
-        notify_passed(requirements, metrics, github_url=github_url)
+        print("📄  Generating HTML report...")
+        generate_html_report(results_path, report_dir)
+        github_report_url = push_folder_to_github(
+            local_dir=report_dir,
+            repo_base_path=f"JMeter Performance Tests/{timestamp}/report",
+            run_timestamp=timestamp,
+        )
+        if github_report_url:
+            print(f"📄  HTML report folder: {github_report_url}")
+        notify_passed(requirements, metrics, github_url=github_url, github_report_url=github_report_url)
         sys.exit(0)
 
     # ── Step 6: Auto-fix and one retry ────────────────────────────────────────
@@ -247,7 +254,16 @@ def main():
 
     if passed:
         print("✅  Auto-fix succeeded! Test PASSED.")
-        notify_fixed(requirements, metrics, github_url=github_url)
+        print("📄  Generating HTML report...")
+        generate_html_report(results_path, report_dir)
+        github_report_url = push_folder_to_github(
+            local_dir=report_dir,
+            repo_base_path=f"JMeter Performance Tests/{timestamp}/report",
+            run_timestamp=timestamp,
+        )
+        if github_report_url:
+            print(f"📄  HTML report folder: {github_report_url}")
+        notify_fixed(requirements, metrics, github_url=github_url, github_report_url=github_report_url)
     else:
         print("❌  Auto-fix failed. Sending full diagnosis to Slack.")
         issue_url = create_github_issue(

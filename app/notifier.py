@@ -86,7 +86,7 @@ def notify_initiated(requirements: dict, is_retry: bool = False):
     _send(msg, "🏁")
 
 
-def notify_passed(requirements: dict, metrics: dict, github_url: str | None = None):
+def notify_passed(requirements: dict, metrics: dict, github_url: str | None = None, github_report_url: str | None = None):
     msg = (
         f"*Test PASSED* 🎉\n"
         f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
@@ -97,7 +97,8 @@ def notify_passed(requirements: dict, metrics: dict, github_url: str | None = No
         f"  • Error Rate       : {metrics.get('error_rate', 0)}%\n"
         f"  • Avg Response Time: {metrics.get('avg_response_ms', 0)}ms\n"
         f"  • Min / Max        : {metrics.get('min_response_ms', 0)}ms / {metrics.get('max_response_ms', 0)}ms" +
-        (f"\n*Run on GitHub:* {github_url}" if github_url else "")
+        (f"\n*Run on GitHub:* {github_url}" if github_url else "") +
+        (f"\n*HTML Report:* {github_report_url}" if github_report_url else "")
     )
     _send(msg, "🎉")
 
@@ -121,7 +122,7 @@ def notify_failure_detected(requirements: dict, metrics: dict, diagnosis: str, g
     _send(msg, "❌")
 
 
-def notify_fixed(requirements: dict, metrics: dict, github_url: str | None = None):
+def notify_fixed(requirements: dict, metrics: dict, github_url: str | None = None, github_report_url: str | None = None):
     msg = (
         f"*Auto-fix Succeeded* 🔧\n"
         f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
@@ -131,7 +132,8 @@ def notify_fixed(requirements: dict, metrics: dict, github_url: str | None = Non
         f"  • Total Requests   : {metrics.get('total_requests', 0)}\n"
         f"  • Error Rate       : {metrics.get('error_rate', 0)}%\n"
         f"  • Avg Response Time: {metrics.get('avg_response_ms', 0)}ms" +
-        (f"\n*Run on GitHub:* {github_url}" if github_url else "")
+        (f"\n*Run on GitHub:* {github_url}" if github_url else "") +
+        (f"\n*HTML Report:* {github_report_url}" if github_report_url else "")
     )
     _send(msg, "🔧")
 
