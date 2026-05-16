@@ -85,3 +85,30 @@ def push_run_to_github(
 
     encoded_folder = f"{_RUN_FOLDER}/{run_timestamp}".replace(" ", "%20")
     return f"https://github.com/{GITHUB_REPO}/tree/main/{encoded_folder}"
+
+
+def create_github_issue(title: str, body: str, labels: list = []) -> str | None:
+    """
+    Open a GitHub issue in the configured repo.
+    Returns the issue html_url on success, or None on failure.
+    """
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+        print("    [github_sync] GITHUB_TOKEN or GITHUB_REPO not set — skipping issue creation.")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept":        "application/vnd.github+json",
+    }
+    url  = f"{_API_BASE}/repos/{GITHUB_REPO}/issues"
+    body_payload = {"title": title, "body": body, "labels": labels}
+
+    try:
+        resp = requests.post(url, json=body_payload, headers=headers, timeout=15)
+        if resp.status_code == 201:
+            return resp.json().get("html_url")
+        print(f"    [github_sync] Issue creation failed: {resp.status_code} {resp.text[:300]}")
+        return None
+    except Exception as e:
+        print(f"    [github_sync] Issue creation error: {e}")
+        return None

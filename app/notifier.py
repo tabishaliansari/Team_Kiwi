@@ -32,14 +32,15 @@ def _send(message: str, emoji: str = "🥝"):
 
 # ── Individual notification functions ──────────────────────────────────────────
 
-def notify_preflight_failed(requirements: dict, error: str):
+def notify_preflight_failed(requirements: dict, error: str, issue_url: str | None = None):
     msg = (
         f"*Pre-flight Check Failed* 🚫\n"
         f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
         f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
         f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n\n"
-        f"*Error:* {error}\n\n"
-        f"_Target is unreachable. Test aborted._"
+        f"*Error:* {error}\n" +
+        (f"*GitHub Issue:* {issue_url}\n" if issue_url else "") +
+        f"\n_Target is unreachable. Test aborted._"
     )
     _send(msg, "🚫")
 
@@ -135,7 +136,7 @@ def notify_fixed(requirements: dict, metrics: dict, github_url: str | None = Non
     _send(msg, "🔧")
 
 
-def notify_unfixable(requirements: dict, metrics: dict, diagnosis: str, github_url: str | None = None):
+def notify_unfixable(requirements: dict, metrics: dict, diagnosis: str, github_url: str | None = None, issue_url: str | None = None):
     errors = metrics.get("error_messages", [])
     msg = (
         f"*Could Not Auto-Fix Test* ⛔\n"
@@ -147,6 +148,7 @@ def notify_unfixable(requirements: dict, metrics: dict, diagnosis: str, github_u
         f"  • Failed Requests : {metrics.get('failed_requests', 0)}\n" +
         (f"  • Errors          : {', '.join(errors)}\n" if errors else "") +
         (f"*Run on GitHub:* {github_url}\n" if github_url else "") +
+        (f"*GitHub Issue:* {issue_url}\n" if issue_url else "") +
         f"\n*Diagnosis:*\n{diagnosis[:600]}\n\n"
         f"_Manual investigation required._"
     )

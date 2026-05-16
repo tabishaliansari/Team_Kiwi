@@ -26,7 +26,7 @@ from notifier import (
     notify_preflight_failed
 )
 from preflight import check_endpoint
-from github_sync import push_run_to_github
+from github_sync import push_run_to_github, create_github_issue
 from config import TESTS_DIR, MAX_VALIDATION_RETRIES, GROQ_API_KEY, MODEL
 
 
@@ -127,7 +127,21 @@ def main():
     )
     if not reachable:
         print(f"❌  Pre-flight failed: {result}")
-        notify_preflight_failed(requirements, result)
+        issue_url = create_github_issue(
+            title=f"Endpoint Unreachable - {requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}",
+            body=(
+                f"## Pre-flight Check Failed\n"
+                f"**Run ID:** {timestamp}\n"
+                f"**Endpoint:** {requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}\n"
+                f"**Error:** {result}\n"
+                f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"Agent aborted before generating the test. Endpoint did not respond."
+            ),
+            labels=["performance", "preflight-failed"],
+        )
+        if issue_url:
+            print(f"🐛  GitHub issue: {issue_url}")
+        notify_preflight_failed(requirements, result, issue_url=issue_url)
         sys.exit(1)
     print(f"    Endpoint reachable (HTTP {result})\n")
 
@@ -196,7 +210,24 @@ def main():
 
     if not fixed_jmx:
         print("❌  Agent could not determine a fix. Sending diagnosis to Slack.")
-        notify_unfixable(requirements, metrics, summary, github_url=github_url)
+        issue_url = create_github_issue(
+            title=f"Performance Test Failed - {requirements.get('test_type', '').upper()} on {requirements.get('domain')}{requirements.get('path')}",
+            body=(
+                f"## Auto-fix Failed\n"
+                f"**Run ID:** {timestamp}\n"
+                f"**Test Type:** {requirements.get('test_type', '').upper()}\n"
+                f"**Endpoint:** {requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}\n"
+                f"**Error Rate:** {metrics.get('error_rate', 0)}%\n"
+                f"**Avg Response:** {metrics.get('avg_response_ms', 0)}ms\n"
+                f"**Diagnosis:** {summary}\n"
+                f"**GitHub Run Folder:** {github_url or 'N/A'}\n\n"
+                f"Agent attempted one auto-fix cycle and could not resolve the failure."
+            ),
+            labels=["performance", "auto-fix-failed"],
+        )
+        if issue_url:
+            print(f"🐛  GitHub issue: {issue_url}")
+        notify_unfixable(requirements, metrics, summary, github_url=github_url, issue_url=issue_url)
         sys.exit(1)
 
     print("🔧  Fix applied. Re-running test...")
@@ -219,7 +250,24 @@ def main():
         notify_fixed(requirements, metrics, github_url=github_url)
     else:
         print("❌  Auto-fix failed. Sending full diagnosis to Slack.")
-        notify_unfixable(requirements, metrics, summary, github_url=github_url)
+        issue_url = create_github_issue(
+            title=f"Performance Test Failed - {requirements.get('test_type', '').upper()} on {requirements.get('domain')}{requirements.get('path')}",
+            body=(
+                f"## Auto-fix Failed\n"
+                f"**Run ID:** {timestamp}\n"
+                f"**Test Type:** {requirements.get('test_type', '').upper()}\n"
+                f"**Endpoint:** {requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}\n"
+                f"**Error Rate:** {metrics.get('error_rate', 0)}%\n"
+                f"**Avg Response:** {metrics.get('avg_response_ms', 0)}ms\n"
+                f"**Diagnosis:** {summary}\n"
+                f"**GitHub Run Folder:** {github_url or 'N/A'}\n\n"
+                f"Agent attempted one auto-fix cycle and could not resolve the failure."
+            ),
+            labels=["performance", "auto-fix-failed"],
+        )
+        if issue_url:
+            print(f"🐛  GitHub issue: {issue_url}")
+        notify_unfixable(requirements, metrics, summary, github_url=github_url, issue_url=issue_url)
 
 
 if __name__ == "__main__":
