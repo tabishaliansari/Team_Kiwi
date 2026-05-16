@@ -45,6 +45,17 @@ def notify_preflight_failed(requirements: dict, error: str, issue_url: str | Non
     _send(msg, "🚫")
 
 
+def notify_cancelled(requirements: dict):
+    msg = (
+        f"*Test Run Cancelled by User* 🚷\n"
+        f"*Test ID:* `{requirements.get('test_id', 'N/A')}`\n"
+        f"*Test Type:* {requirements.get('test_type', '').upper()}\n"
+        f"*Endpoint:* `{requirements.get('protocol')}://{requirements.get('domain')}{requirements.get('path')}`\n\n"
+        f"_Test was generated and validated but the user chose not to run it._"
+    )
+    _send(msg, "🚷")
+
+
 def notify_validation_failed(requirements: dict, issues: list, attempt: int):
     msg = (
         f"*Test Validation Failed* (Attempt {attempt})\n"

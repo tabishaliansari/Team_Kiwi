@@ -19,7 +19,8 @@ from notifier import (
     notify_failure_detected,
     notify_fixed,
     notify_unfixable,
-    notify_preflight_failed
+    notify_preflight_failed,
+    notify_cancelled
 )
 from preflight import check_endpoint
 from github_sync import push_run_to_github, push_folder_to_github, create_github_issue
@@ -171,6 +172,7 @@ def main():
     # ── Step 3: User consent ─────────────────────────────────────────────────
     if not get_user_consent():
         print("\n  Test run cancelled by user. Exiting.")
+        notify_cancelled(requirements)
         sys.exit(0)
 
     # ── Step 4: First run ────────────────────────────────────────────────────
